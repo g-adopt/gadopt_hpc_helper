@@ -2,8 +2,7 @@ from dataclasses import dataclass
 from typing import Callable
 from ..schedulers import HPCScheduler
 
-default_job_template = """
-{header}
+default_job_template = """{header}
 
 {prescript}
 

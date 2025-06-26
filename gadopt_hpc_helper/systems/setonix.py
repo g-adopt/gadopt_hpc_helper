@@ -13,8 +13,7 @@ module use /software/projects/pawsey0821/modules
 module load firedrake
 """
 
-_setonix_job_header = """
-#!/bin/bash -i
+_setonix_job_header = """#!/bin/bash -i
 #SBATCH --exclude=nid00[2024-2055],nid00[2792-2823]
 """
 

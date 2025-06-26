@@ -162,13 +162,17 @@ async def gadopt_hpcrun_async(
 def file_to_str(path: str) -> str:
     """Read a file into a string
 
+    If the path is empty, just return an empty string
+
     Args:
       path: Path to file
 
     Returns:
       string: Contents of file
     """
-    with open(path,"r") as f:
+    if path == "":
+        return ""
+    with open(path, "r") as f:
         return f.read()
 
 
