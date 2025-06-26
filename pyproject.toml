@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gadopt_hpc_helper"
+version = "0.0.1"
+dependencies = ["python-dateutil"]
+requires-python = ">=3.10"
+description = "A utility that helps run G-ADOPT on HPC systems"
+
+[project.scripts]
+gadopt_hpcrun = "gadopt_hpc_helper:main"
