@@ -30,4 +30,5 @@ class HPCSystem:
     header: str
     prescript: str
     scheduler: HPCScheduler
+    project_var: str
     required_env: set[str]

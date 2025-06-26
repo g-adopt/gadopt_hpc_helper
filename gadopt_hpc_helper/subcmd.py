@@ -39,7 +39,7 @@ def build_sub_cmd(system: HPCSystem, cfg: HPCHelperConfig) -> list[str]:
                 mem=cfg.mem,
                 local_storage=system.queues[cfg.queue].local_disk_per_node,
                 queue=cfg.queue,
-                project=os.environ["PROJECT"],
+                project=os.environ[system.project_var],
                 outname=cfg.outfile,
                 errname=cfg.errfile,
             )

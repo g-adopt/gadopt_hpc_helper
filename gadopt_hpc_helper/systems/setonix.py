@@ -26,5 +26,6 @@ Setonix = HPCSystem(
     header=_setonix_job_header,
     prescript=_setonix_gadopt_setup,
     scheduler=Slurm,
-    required_env={"MY_GADOPT", "PROJECT"},
+    project_var="PAWSEY_PROJECT",
+    required_env={"MY_GADOPT"},
 )

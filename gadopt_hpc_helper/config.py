@@ -58,7 +58,7 @@ class HPCHelperConfig:
         """Intialises the config object
 
         This function combines system defaults with user overrides in order to
-        provide all required information to construct submit commands and job 
+        provide all required information to construct submit commands and job
         scripts
 
         Args:
@@ -102,8 +102,9 @@ class HPCHelperConfig:
             will be used
         """
         self.nprocs = nprocs
+        required_env = system.required_env | set((system.project_var,))
         try:
-            self.env = ",".join([f"{k}={os.environ[k]}" for k in system.required_env])
+            self.env = ",".join([f"{k}={os.environ[k]}" for k in required_env])
         except KeyError as e:
             nl = "\n"
             print(

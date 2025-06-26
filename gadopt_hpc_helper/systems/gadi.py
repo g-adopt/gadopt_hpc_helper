@@ -28,5 +28,6 @@ Gadi = HPCSystem(
     header=_gadi_job_header,
     prescript=_gadi_gadopt_setup,
     scheduler=Nci_pbspro,
-    required_env={"MY_GADOPT", "PROJECT"},
+    project_var="PROJECT",
+    required_env={"MY_GADOPT"},
 )
