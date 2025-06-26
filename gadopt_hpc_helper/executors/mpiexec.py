@@ -2,6 +2,10 @@ from . import HPCExecutor
 
 
 class MpiexecExecutor(HPCExecutor):
+    """
+    Extend the HPCExecutor class to provide a definition for the get() function
+    that allows construction of more complex binding options
+    """
     def get(self) -> str:
         if self.nprocs == 1:
             return ""

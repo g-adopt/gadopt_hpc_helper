@@ -1,3 +1,6 @@
+"""
+Define the properties of the Gadi system at NCI
+"""
 import socket
 from .system_base import HPCSystem, HPCQueue, default_job_template
 from ..schedulers import Nci_pbspro

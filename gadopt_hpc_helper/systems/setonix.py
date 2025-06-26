@@ -1,3 +1,7 @@
+"""
+Define the properties of the Setonix HPC system at Pawsey
+"""
+
 import socket
 from .system_base import HPCQueue, HPCSystem, default_job_template
 from ..schedulers import Slurm

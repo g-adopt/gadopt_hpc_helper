@@ -1,3 +1,11 @@
+"""Job submit command constructor
+
+This module contains a single function that constructs the batch
+submission command for a G-ADOPT job. We prefer to construct
+resource requests on the command line rather than in a script
+as it significantly simplifies the script templates required.
+"""
+
 from shlex import split
 import os
 import math
@@ -7,6 +15,22 @@ from .config import HPCHelperConfig, PreserveFormatDict
 
 
 def build_sub_cmd(system: HPCSystem, cfg: HPCHelperConfig) -> list[str]:
+    """Construct the batch job submission command
+
+    The command itself is constructed as a string, then formatted using the a
+    PreserveFormatDict such that any brace-enclosed variables not defined in
+    the dict remain as-is. This string is then split with the `shlex.split()`
+    function in the hope of preserving any escaped input arguments.
+
+    Args:
+      system:
+        The HPCSystem object derived on import of the module
+      cfg:
+        The `HPCHelperConfig` object for this job
+
+    Returns
+      list[str]: The formatted command tokenised by `shlex.split()`
+    """
     cmd_str = system.scheduler.subcmd + " "
     cmd_str += system.scheduler.var_spec + " " if cfg.env else " "
     cmd_str += system.scheduler.block_spec + " "

@@ -1,3 +1,6 @@
+"""
+Define the properties of PBSPro with NCI's site-specific modifications
+"""
 from . import HPCScheduler, h_m_s_formatter
 from ..executors import Mpiexec
 

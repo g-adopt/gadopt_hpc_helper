@@ -1,3 +1,8 @@
+"""
+Defines the `get_system` function, which is run when gadopt_hpc_helper
+is imported
+"""
+
 import os
 
 from .system_base import HPCSystem
