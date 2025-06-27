@@ -108,14 +108,15 @@ class HPCHelperConfig:
         except KeyError as e:
             nl = "\n"
             print(
-                f"Error: {e.args[0]} is not present in the environment. The following environment variables must be set when running on {system.name}:{nl}{nl.join(k for k in system.required_env)}"
+                f"Error: {e.args[0]} is not present in the environment. The following environment variables must be set when running on {system.name}:{nl}{nl.join(k for k in required_env)}"
             )
             exit(1)
 
-        if isinstance(extra_env, dict):
-            self.env = ",".join([self.env] + [f"{k}={v}" for k, v in extra_env.items()])
-        else:
-            self.env = ",".join([self.env, extra_env])
+        if extra_env:
+            if isinstance(extra_env, dict):
+                self.env = ",".join([self.env] + [f"{k}={v}" for k, v in extra_env.items()])
+            else:
+                self.env = ",".join([self.env, extra_env])
 
         if prescript:
             self.prescript = prescript

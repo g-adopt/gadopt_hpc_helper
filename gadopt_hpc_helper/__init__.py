@@ -28,12 +28,15 @@ import dateutil
 import dateutil.parser
 from typing import Any
 
+from .logging import logger
+
 from .systems import get_system
 from .config import HPCHelperConfig, default_walltime
 from .subcmd import build_sub_cmd
 from .script import Gadopt_HPC_Script
 
 system = get_system()
+logger.info("Detected system: %s", system.name)
 
 
 class NothingToDoError(Exception):
@@ -128,7 +131,7 @@ async def gadopt_hpcrun_async(
     """
     if not cmd:
         raise NothingToDoError("No command given to run")
-    print(cmd)
+    logger.info("Will run the following command:\n%s", " ".join(cmd))
 
     cfg = HPCHelperConfig(
         system,
@@ -147,13 +150,15 @@ async def gadopt_hpcrun_async(
     )
     # First construct the qsub command
     subcmd = build_sub_cmd(system, cfg)
-    print(subcmd)
+    logger.info("Will use the following batch submission command:\n%s", " ".join(subcmd))
     # Set parameters on the executor
     system.scheduler.executor.set_job_size_specific_flags(cfg.nprocs, cfg.ppn, cfg.cores_per_node, cfg.numa_per_node)
     executor = system.scheduler.executor.get()
 
     with Gadopt_HPC_Script(cfg, executor, cmd) as script_file:
+        logger.info("Submitting the following script:\n%s", open(script_file).read())
         subcmd.append(script_file)
+        logger.debug(subcmd)
         proc = await asyncio.create_subprocess_exec(*subcmd)
         await proc.wait()
         return proc.returncode

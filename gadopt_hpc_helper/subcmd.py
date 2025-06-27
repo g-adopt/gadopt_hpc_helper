@@ -29,30 +29,35 @@ def build_sub_cmd(system: HPCSystem, cfg: HPCHelperConfig) -> list[str]:
         The `HPCHelperConfig` object for this job
 
     Returns
-      list[str]: The formatted command tokenised by `shlex.split()`
+      list[str]: The formatted batch submission command`
     """
-    cmd_str = system.scheduler.subcmd + " "
-    cmd_str += system.scheduler.var_spec + " " if cfg.env else " "
-    cmd_str += system.scheduler.block_spec + " "
-    cmd_str += system.scheduler.name_spec + " " if cfg.jobname else " "
-    cmd_str += system.scheduler.procs_spec + " "
-    cmd_str += system.scheduler.time_spec + " "
-    cmd_str += system.scheduler.mem_spec + " "
-    cmd_str += system.scheduler.local_storage_spec + " "
-    cmd_str += (
-        system.scheduler.job_size_specific_flags(
-            cfg.nprocs, cfg.ppn, system.queues[cfg.queue].cores_per_node, system.queues[cfg.queue].numa_per_node
-        )
-        + " "
+    cmd = [system.scheduler.subcmd]
+    if cfg.env:
+        cmd.extend(split(system.scheduler.var_spec))
+    cmd.append(system.scheduler.block_spec)
+    if cfg.jobname:
+        cmd.extend(split(system.scheduler.name_spec))
+    cmd.extend(
+        [
+            *split(system.scheduler.procs_spec),
+            *split(system.scheduler.time_spec),
+            *split(system.scheduler.mem_spec),
+            *split(system.scheduler.local_storage_spec),
+            *split(system.scheduler.job_size_specific_flags(
+                cfg.nprocs, cfg.ppn, system.queues[cfg.queue].cores_per_node, system.queues[cfg.queue].numa_per_node
+            )),
+            *split(system.scheduler.extras),
+            *split(system.scheduler.queue_spec),
+            *split(system.scheduler.acct_spec),
+        ]
     )
-    cmd_str += system.scheduler.extras + " "
-    cmd_str += system.scheduler.queue_spec + " "
-    cmd_str += system.scheduler.acct_spec
-    cmd_str += " " + system.scheduler.stdout_spec if cfg.outfile else ""
-    cmd_str += " " + system.scheduler.stderr_spec if cfg.errfile else ""
+    if cfg.outfile:
+        cmd.extend(split(system.scheduler.stdout_spec))
+    if cfg.errfile:
+        cmd.extend(split(system.scheduler.stderr_spec))
 
-    return split(
-        cmd_str.format_map(
+    return [
+        c.format_map(
             PreserveFormatDict(
                 jobname=cfg.jobname,
                 comma_sep_vars=cfg.env,
@@ -68,4 +73,5 @@ def build_sub_cmd(system: HPCSystem, cfg: HPCHelperConfig) -> list[str]:
                 errname=cfg.errfile,
             )
         )
-    )
+        for c in cmd
+    ]
