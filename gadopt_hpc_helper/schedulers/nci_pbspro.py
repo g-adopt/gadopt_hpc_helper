@@ -1,6 +1,7 @@
 """
 Define the properties of PBSPro with NCI's site-specific modifications
 """
+
 from . import HPCScheduler, h_m_s_formatter
 from ..executors import Mpiexec
 
@@ -19,5 +20,6 @@ Nci_pbspro = HPCScheduler(
     queue_spec="-q {queue}",
     local_storage_spec="-ljobfs={local_storage}GB",
     extras="-lstorage=gdata/{project}+scratch/{project}+gdata/fp50 -lwd",
+    directive_prefix="#PBS",
     executor=Mpiexec,
 )

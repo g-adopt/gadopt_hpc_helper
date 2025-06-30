@@ -20,7 +20,7 @@ def _init_logging() -> logging.Logger:
             log_level = getattr(logging, lstr)
         else:
             logger.warning(
-                "GADOPT_HPC_HELPER_LOG_LEVEL in environment (%s) does not correspond to any known logging level",
+                "GADOPT_HPC_HELPER_LOG_LEVEL in environment: %s does not correspond to any known logging level",
                 os.environ["GADOPT_HPC_HELPER_LOG_LEVEL"],
             )
     logger.setLevel(log_level)

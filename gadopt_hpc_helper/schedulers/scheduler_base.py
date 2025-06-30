@@ -20,6 +20,7 @@ class HPCScheduler:
     in its own file. These objects should be re-exported through __init__.py
     such that they can be used and/or extended by `HPCSystem` objects.
     """
+
     subcmd: str
     var_spec: str
     block_spec: str
@@ -34,6 +35,7 @@ class HPCScheduler:
     queue_spec: str
     local_storage_spec: str
     extras: str
+    directive_prefix: str
     executor: HPCExecutor
 
     def job_size_specific_flags(self, *args) -> str:

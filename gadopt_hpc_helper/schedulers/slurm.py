@@ -35,5 +35,6 @@ Slurm = SlurmScheduler(
     queue_spec="-p {queue}",
     local_storage_spec="",
     extras="",
+    directive_prefix="#SBATCH",
     executor=Srun,
 )

@@ -3,7 +3,7 @@ from typing import Callable
 from ..schedulers import HPCScheduler
 
 default_job_template = """{header}
-
+{directives}
 {prescript}
 
 {executor} {command}

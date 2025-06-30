@@ -54,6 +54,8 @@ class HPCHelperConfig:
         queue: str,
         template: str,
         header: str,
+        print_script: bool,
+        save_script: str,
     ):
         """Intialises the config object
 
@@ -100,6 +102,10 @@ class HPCHelperConfig:
           header:
             The job header. If not provided, the default for the system
             will be used
+          print_script:
+            Print the final script to stdout instead of running
+          save_script:
+            Path to save script file to
         """
         self.nprocs = nprocs
         required_env = system.required_env | set((system.project_var,))
@@ -165,9 +171,67 @@ class HPCHelperConfig:
         else:
             self.mem = mem
 
+        self.extras = ""
+        self.print_script = print_script
+
+        self.save_script = save_script
+        if self.save_script:
+            self.save = True
+
         self.cores_per_node = system.queues[self.queue].cores_per_node
         self.numa_per_node = system.queues[self.queue].numa_per_node
 
         self.outfile = outfile
         self.errfile = errfile
         self.jobname = jobname
+
+    def set_directives(self, system: HPCSystem, opts_style: str):
+        directives = []
+        if opts_style == "directive":
+            dir_prefix = system.scheduler.directive_prefix
+
+            if self.jobname:
+                directives.append(f"{dir_prefix} {system.scheduler.name_spec}")
+            if system.scheduler.procs_spec:
+                directives.append(f"{dir_prefix} {system.scheduler.procs_spec}")
+            if system.scheduler.time_spec:
+                directives.append(f"{dir_prefix} {system.scheduler.time_spec}")
+            if system.scheduler.mem_spec:
+                directives.append(f"{dir_prefix} {system.scheduler.mem_spec}")
+            if system.scheduler.local_storage_spec:
+                directives.append(f"{dir_prefix} {system.scheduler.local_storage_spec}")
+            if system.scheduler.acct_spec:
+                directives.append(f"{dir_prefix} {system.scheduler.acct_spec}")
+            if system.scheduler.queue_spec:
+                directives.append(f"{dir_prefix} {system.scheduler.queue_spec}")
+            size_flags = system.scheduler.job_size_specific_flags(
+                self.nprocs, self.ppn, system.queues[self.queue].cores_per_node, system.queues[self.queue].numa_per_node
+            )
+            if size_flags:
+                directives.append(f"{dir_prefix} {size_flags}")
+            if system.scheduler.extras:
+                directives.append(f"{dir_prefix} {system.scheduler.extras}")
+            if self.outfile:
+                directives.append(f"{dir_prefix} {system.scheduler.stdout_spec}")
+            if self.errfile:
+                directives.append(f"{dir_prefix} {system.scheduler.stderr_spec}")
+        self.directives = "\n".join(
+            [
+                d.format_map(
+                    PreserveFormatDict(
+                        jobname=self.jobname,
+                        cores=self.nprocs,
+                        ppn=self.ppn,
+                        nodes=math.ceil(self.nprocs / self.ppn),
+                        walltime=system.scheduler.time_formatter(self.walltime),
+                        mem=self.mem,
+                        local_storage=system.queues[self.queue].local_disk_per_node,
+                        queue=self.queue,
+                        project=os.environ[system.project_var],
+                        outname=self.outfile,
+                        errname=self.errfile,
+                    )
+                )
+                for d in directives
+            ]
+        )

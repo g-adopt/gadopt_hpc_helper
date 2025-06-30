@@ -29,6 +29,7 @@ import dateutil.parser
 from typing import Any
 
 from .logging import logger
+from logging import DEBUG
 
 from .systems import get_system
 from .config import HPCHelperConfig, default_walltime
@@ -68,6 +69,10 @@ async def gadopt_hpcrun_async(
     mem: int = -1,
     prescript: str = "",
     header: str = "",
+    debug: bool = False,
+    print_script: bool = False,
+    save_script: str = "",
+    opts_style: str = "cmdline",
     cmd: list[str] = [],
 ) -> int | None:
     """The main entrypoint for running G-ADOPT using a driver script.
@@ -117,6 +122,17 @@ async def gadopt_hpcrun_async(
       header (optional):
         The job header. If not provided, the default for the system
         will be used
+      debug (optional):
+        Enable debugging.
+      print_script (optional):
+        Do not run the job, instead print a batch script to run the job
+      save_script (optional):
+        Save the script created (along with the submission command) to the
+        provided path
+      opts_style (optional):
+        Options style to pass to batch system. 'cmdline' places all
+        arguments on the submission command line, 'directive' places
+        as many arguments as possible in the batch script
       cmd (optional):
         A list containing the command to run. Note that this argument
         isn't really optional as this function will raise an exception
@@ -129,6 +145,8 @@ async def gadopt_hpcrun_async(
       NothingToDoError: Not given anything command to run
 
     """
+    if debug:
+        logger.setLevel(DEBUG)
     if not cmd:
         raise NothingToDoError("No command given to run")
     logger.info("Will run the following command:\n%s", " ".join(cmd))
@@ -147,18 +165,25 @@ async def gadopt_hpcrun_async(
         queue,
         template,
         header,
+        print_script,
+        save_script,
     )
     # First construct the qsub command
-    subcmd = build_sub_cmd(system, cfg)
+    subcmd = build_sub_cmd(system, cfg, opts_style)
     logger.info("Will use the following batch submission command:\n%s", " ".join(subcmd))
     # Set parameters on the executor
     system.scheduler.executor.set_job_size_specific_flags(cfg.nprocs, cfg.ppn, cfg.cores_per_node, cfg.numa_per_node)
     executor = system.scheduler.executor.get()
-
+    cfg.set_directives(system, opts_style)
+    if save_script or print_script:
+        cfg.directives += "\n#" + " ".join(subcmd)
     with Gadopt_HPC_Script(cfg, executor, cmd) as script_file:
         logger.info("Submitting the following script:\n%s", open(script_file).read())
         subcmd.append(script_file)
-        logger.debug(subcmd)
+        logger.debug("%s", subcmd)
+        if cfg.print_script:
+            print(open(script_file, "r").read())
+            return 0
         proc = await asyncio.create_subprocess_exec(*subcmd)
         await proc.wait()
         return proc.returncode
@@ -255,6 +280,22 @@ def main():
         default="",
         help="Path to a file that contains a template to use for this job",
     )
+    parser.add_argument("--debug", action="store_true", help="Enable G-ADOPT HPC Helper debugging")
+    parser.add_argument(
+        "--print-script",
+        required=False,
+        action="store_true",
+        help="Do not run the job, instead print a script that will allow the job to be submitted on this system",
+    )
+    parser.add_argument("--save-script", required=False, help="Save the created job script to the given path")
+    parser.add_argument(
+        "--opts-style",
+        required=False,
+        type=str,
+        default="cmdline",
+        choices=["cmdline", "directive"],
+        help="Options style to pass to batch system. 'cmdline' places all arguments on the submission command line, 'directive' places as many arguments as possible in the batch script",
+    )
     # Undocumented and buggy as per https://bugs.python.org/issue43343#msg387812
     # but the only way to get GNU C-like argument parsing without manually looping
     # through args
@@ -272,6 +313,10 @@ def main():
             ns.errfile,
             ns.jobname,
             ns.template_file,
+            debug=ns.debug,
+            print_script=ns.print_script,
+            save_script=ns.save_script,
+            opts_style=ns.opts_style,
             cmd=ns.rest,
         )
     )

@@ -21,6 +21,11 @@ class Gadopt_HPC_Script:
       Usually the interpreter and any additional system-specific job flags that
       are constant on all jobs
 
+    `{directives}`:
+      Used when saving or printing the script. When saving, will be replaced with
+      the batch submission script for the job. When printing, will be replaced
+      with batch directives for the job. Blank otherwise
+
     `{prescript}`:
       Usually loading modules and any other pre-G-ADOPT setup
 
@@ -49,17 +54,29 @@ class Gadopt_HPC_Script:
             The command to run within the script. Generally constructed from the
             'left over' command-line arguments, hence a list of strings
         """
-        self.script_file = tempfile.NamedTemporaryFile()
-        with open(self.script_file.name, "w") as f:
+        if cfg.save_script:
+            self.fn = cfg.save_script
+            self.script_file = None
+        else:
+            self.script_file = tempfile.NamedTemporaryFile()
+            self.fn = self.script_file.name
+        with open(self.fn, "w") as f:
             f.write(
                 cfg.template.format_map(
-                    PreserveFormatDict(header=cfg.header, prescript=cfg.prescript, executor=executor, command=join(cmd))
+                    PreserveFormatDict(
+                        header=cfg.header,
+                        directives=cfg.directives,
+                        prescript=cfg.prescript,
+                        executor=executor,
+                        command=join(cmd),
+                    )
                 )
             )
 
     def __enter__(self) -> str:
-        return self.script_file.name
+        return self.fn
 
     def __exit__(self, type, value, traceback):
-        """Closes(and therefore deletes) the script file"""
-        self.script_file.close()
+        """Closes (and therefore deletes) the script file"""
+        if self.script_file:
+            self.script_file.close()
