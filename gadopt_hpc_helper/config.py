@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 from .systems import HPCSystem
 from .schedulers import format_batch_arg_spec
+from .logging import logger
 
 default_walltime = timedelta(hours=4)
 
@@ -109,13 +110,16 @@ class HPCHelperConfig:
             Path to save script file to
         """
         self.nprocs = nprocs
+        logger.debug("nprocs: %s", nprocs)
         required_env = system.required_env | set((system.project_var,))
         try:
             self.env = ",".join([f"{k}={os.environ[k]}" for k in required_env])
         except KeyError as e:
-            nl = "\n"
-            print(
-                f"Error: {e.args[0]} is not present in the environment. The following environment variables must be set when running on {system.name}:{nl}{nl.join(k for k in required_env)}"
+            logger.error(
+                "Error: %s is not present in the environment. The following environment variables must be set when running on %s:\n%s",
+                e.args[0],
+                system.name,
+                "\n".join(k for k in required_env),
             )
             exit(1)
 
@@ -127,39 +131,53 @@ class HPCHelperConfig:
 
         if prescript:
             self.prescript = prescript
+            logger.debug("User-provided prescript %s", self.prescript)
         else:
             self.prescript = system.prescript
+            logger.debug("Default prescript %s", self.prescript)
 
         if queue:
             if queue not in system.queues:
-                nl = "\n"
-                print(
-                    f"{queue} is not a valid queue for system {system.name}.{nl}Valid queues are:{nl}{nl.join(q for q in system.queues)}"
+                logger.error(
+                    "%s is not a valid queue for system %s.\nValid queues are:\n%s",
+                    queue,
+                    system.name,
+                    "\n".join(q for q in system.queues),
                 )
                 exit(1)
             self.queue = queue
+            logger.debug("User-provided queue %s", self.queue)
         else:
             self.queue = system.default_queue
+            logger.debug("Default queue %s", self.queue)
 
         if walltime:
             self.walltime = walltime
+            logger.debug("User-provided walltime %s", self.walltime)
         else:
             self.walltime = default_walltime
+            logger.debug("Default walltime %s", self.walltime)
 
         if template:
             self.template = template
+            logger.debug("User-provided template %s", self.template)
         else:
             self.template = system.job_template
+            logger.debug("Default template\n%s", self.template)
 
         if header:
             self.header = header
+            logger.debug("User-provided header %s", self.header)
         else:
             self.header = system.header
+            logger.debug("Default header %s", self.header)
 
         if ppn == -1:
             self.ppn = system.queues[self.queue].default_processes_per_node
+            logger.debug("Default procs per node %s", self.ppn)
         else:
             self.ppn = ppn
+            logger.debug("User-provided procs per node %s", self.ppn)
 
         if mem == -1:
             nnodes = math.ceil(self.nprocs / self.ppn)
@@ -169,15 +187,17 @@ class HPCHelperConfig:
                 )
             else:
                 self.mem = math.floor(nnodes * system.queues[self.queue].memory_per_node)
+            logger.debug("Default memory request %sGB", self.mem)
         else:
             self.mem = mem
+            logger.debug("User-provided procs per node %s", self.ppn)
 
         self.extras = ""
         self.print_script = print_script
+        logger.debug("Print script? %s", self.print_script)
 
         self.save_script = save_script
-        if self.save_script:
-            self.save = True
+        logger.debug("Save script name: %s", save_script)
 
         self.cores_per_node = system.queues[self.queue].cores_per_node
         self.numa_per_node = system.queues[self.queue].numa_per_node
