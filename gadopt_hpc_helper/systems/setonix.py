@@ -22,7 +22,7 @@ _setonix_job_header = """#!/bin/bash -i
 """
 
 Setonix = HPCSystem(
-    name="Setonix",
+    name="setonix",
     is_this_system=lambda: socket.getfqdn().endswith("setonix.pawsey.org.au"),
     queues=_setonix_queues,
     default_queue="work",

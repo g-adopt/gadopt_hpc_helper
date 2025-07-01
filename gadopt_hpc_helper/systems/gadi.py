@@ -1,6 +1,7 @@
 """
 Define the properties of the Gadi system at NCI
 """
+
 import socket
 from .system_base import HPCSystem, HPCQueue, default_job_template
 from ..schedulers import Nci_pbspro
@@ -23,7 +24,7 @@ module load firedrake
 """
 
 Gadi = HPCSystem(
-    name="Gadi",
+    name="gadi",
     is_this_system=lambda: socket.gethostname().startswith("gadi"),
     queues=_gadi_queues,
     default_queue="normalsr",
