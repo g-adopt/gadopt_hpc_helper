@@ -175,6 +175,7 @@ async def gadopt_hpcrun_async(
         save_script,
     )
     # First construct the qsub command
+    system.scheduler.set_job_size_specific_flags(cfg.nprocs, cfg.ppn, cfg.cores_per_node, cfg.numa_per_node)
     subcmd = build_sub_cmd(system, cfg, opts_style)
     logger.info("Will use the following batch submission command:\n%s", " ".join(subcmd))
     # Set parameters on the executor

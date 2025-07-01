@@ -27,8 +27,30 @@ class HPCScheduler:
     time_formatter: Callable[[timedelta], str]
     spec: dict[str, str | list[str]]
 
-    def job_size_specific_flags(self, *args) -> list[str]:
+    def job_size_specific_flags(self) -> list[str]:
         return []
+
+    def set_job_size_specific_flags(self, nprocs: int, ppn: int, cores_per_node: int, numa_per_node: int) -> None:
+        """
+        Set the cores/node parameters required for this particular job. Batch submission args can
+        vary in complexity. Slurm, for instance, derives all of its layout options from
+        the batch submission command, so the full command cannot be known until the size of
+        the job has been determined
+
+        Args:
+          nprocs:
+            The total number of processes to be launched by this job
+          ppn:
+            The number of processes to launch per node.
+          cores_per_node:
+            The number of physical cores on each compute node
+          numa_per_node:
+            The number of NUMA zones per node
+        """
+        self.nprocs = nprocs
+        self.procs_per_node = ppn
+        self.cores_per_node = cores_per_node
+        self.numa_per_node = numa_per_node
 
 
 def format_batch_arg_spec(do: bool, spec: str | list[str], format_dict: dict[str, Any], prefix="") -> list[str]:

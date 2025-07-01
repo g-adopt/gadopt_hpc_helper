@@ -11,11 +11,11 @@ class SlurmScheduler(HPCScheduler):
     Extend the HPCScheduler class to provide a definition for job_size_specific_flags
     """
 
-    def job_size_specific_flags(self, procs: int = 1, procs_per_node: int = 1, *args) -> list[str]:
+    def job_size_specific_flags(self) -> list[str]:
         """
         Add the --exclusive flag if this job is going to use more than half of a node
         """
-        if procs >= procs_per_node / 2:
+        if self.nprocs >= self.procs_per_node / 2:
             return ["--exclusive"]
         return []
 
