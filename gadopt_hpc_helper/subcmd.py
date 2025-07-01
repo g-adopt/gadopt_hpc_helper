@@ -7,11 +7,11 @@ as it significantly simplifies the script templates required.
 """
 
 from shlex import split
-import os
-import math
+from typing import Callable
 
 from .systems import HPCSystem
-from .config import HPCHelperConfig, PreserveFormatDict
+from .schedulers import format_batch_arg_spec
+from .config import HPCHelperConfig
 
 
 def build_sub_cmd(system: HPCSystem, cfg: HPCHelperConfig, opts_style: str) -> list[str]:
@@ -32,55 +32,35 @@ def build_sub_cmd(system: HPCSystem, cfg: HPCHelperConfig, opts_style: str) -> l
         line or in the job script
 
     Returns
-      list[str]: The formatted batch submission command`
+      list[str]: The formatted batch submission command
     """
-    cmd = [system.scheduler.subcmd]
-    if cfg.env:
-        cmd.extend(split(system.scheduler.var_spec))
-    cmd.append(system.scheduler.block_spec)
+    attribs_order: list[str | Callable] = ["var", "block"]
     if opts_style == "cmdline":
-        if cfg.jobname:
-            cmd.extend(split(system.scheduler.name_spec))
-        cmd.extend(
+        attribs_order.extend(
             [
-                *split(system.scheduler.procs_spec),
-                *split(system.scheduler.time_spec),
-                *split(system.scheduler.mem_spec),
-                *split(system.scheduler.local_storage_spec),
-                *split(
-                    system.scheduler.job_size_specific_flags(
-                        cfg.nprocs,
-                        cfg.ppn,
-                        system.queues[cfg.queue].cores_per_node,
-                        system.queues[cfg.queue].numa_per_node,
-                    )
-                ),
-                *split(system.scheduler.extras),
-                *split(system.scheduler.queue_spec),
-                *split(system.scheduler.acct_spec),
+                "name",
+                "procs",
+                "time",
+                "mem",
+                "local_storage",
+                system.scheduler.job_size_specific_flags,
+                "extras",
+                "queue",
+                "acct",
+                "stdout",
+                "stderr",
             ]
         )
-        if cfg.outfile:
-            cmd.extend(split(system.scheduler.stdout_spec))
-        if cfg.errfile:
-            cmd.extend(split(system.scheduler.stderr_spec))
 
-    return [
-        c.format_map(
-            PreserveFormatDict(
-                jobname=cfg.jobname,
-                comma_sep_vars=cfg.env,
-                cores=cfg.nprocs,
-                ppn=cfg.ppn,
-                nodes=math.ceil(cfg.nprocs / cfg.ppn),
-                walltime=system.scheduler.time_formatter(cfg.walltime),
-                mem=cfg.mem,
-                local_storage=system.queues[cfg.queue].local_disk_per_node,
-                queue=cfg.queue,
-                project=os.environ[system.project_var],
-                outname=cfg.outfile,
-                errname=cfg.errfile,
-            )
-        )
-        for c in cmd
-    ]
+    cmd = [system.scheduler.subcmd]
+    for attrib in attribs_order:
+        if isinstance(attrib, str):
+            if attrib in system.scheduler.spec:
+                var_test = getattr(cfg, f"do_{attrib}") if hasattr(cfg, f"do_{attrib}") else True
+                for f in format_batch_arg_spec(var_test, system.scheduler.spec[attrib], cfg.global_format_dict):
+                    cmd.extend(split(f))
+        else:
+            for f in attrib():
+                cmd.extend(split(f))
+
+    return cmd

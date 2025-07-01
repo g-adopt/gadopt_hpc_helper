@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Callable
+from typing import Callable, Any
 
 from ..executors import HPCExecutor
 
@@ -22,21 +22,38 @@ class HPCScheduler:
     """
 
     subcmd: str
-    var_spec: str
-    block_spec: str
-    name_spec: str
-    time_spec: str
-    time_formatter: Callable[[timedelta], str]
-    procs_spec: str
-    mem_spec: str
-    stdout_spec: str
-    stderr_spec: str
-    acct_spec: str
-    queue_spec: str
-    local_storage_spec: str
-    extras: str
     directive_prefix: str
     executor: HPCExecutor
+    time_formatter: Callable[[timedelta], str]
+    spec: dict[str, str | list[str]]
 
-    def job_size_specific_flags(self, *args) -> str:
-        return ""
+    def job_size_specific_flags(self, *args) -> list[str]:
+        return []
+
+
+def format_batch_arg_spec(do: bool, spec: str | list[str], format_dict: dict[str, Any], prefix="") -> list[str]:
+    """Batch argument formatter
+
+    Takes a spec string, a formatting dictionary and a flag to indicate whether
+    the anything should be returned. Returns a list of formatted strings, or an
+    empty list if 'do' is False
+
+    Args:
+      do:
+        A flag to determine if there should be any output
+      spec:
+        A string or list of strings with brace-enclosed {format} strings
+      format_dict:
+        A dict (ideally a PreserveFormatDict) that contains k-v pairs for
+        any {format} strings that may be encountered.
+
+    Returns:
+      list[str]: Formatted strings
+    """
+    if do:
+        if isinstance(spec, str):
+            return [f"{prefix} {spec.format_map(format_dict)}"]
+        else:
+            return [f"{prefix} {s.format_map(format_dict)}" for s in spec]
+    else:
+        return []

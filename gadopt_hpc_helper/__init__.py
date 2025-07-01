@@ -149,6 +149,12 @@ async def gadopt_hpcrun_async(
         logger.setLevel(DEBUG)
     if not cmd:
         raise NothingToDoError("No command given to run")
+    if not print_script and opts_style == "directive":
+        logger.error(
+            "Parsing scheduler options into script directives is flakey and not used for running scripts. --opts-style directive can only be use with the --print-script option."
+        )
+        exit(1)
+
     logger.info("Will run the following command:\n%s", " ".join(cmd))
 
     cfg = HPCHelperConfig(
@@ -174,9 +180,11 @@ async def gadopt_hpcrun_async(
     # Set parameters on the executor
     system.scheduler.executor.set_job_size_specific_flags(cfg.nprocs, cfg.ppn, cfg.cores_per_node, cfg.numa_per_node)
     executor = system.scheduler.executor.get()
-    cfg.set_directives(system, opts_style)
+    if opts_style == "directive":
+        cfg.set_directives(system)
+        logger.warning("'directive' batch options style is flakey. Double check your script before attempting to run.")
     if save_script or print_script:
-        cfg.directives += "\n#" + " ".join(subcmd)
+        cfg.directives += "\n#Sumbit with:\n#" + " ".join(subcmd) + " <script_name>"
     with Gadopt_HPC_Script(cfg, executor, cmd) as script_file:
         logger.info("Submitting the following script:\n%s", open(script_file).read())
         subcmd.append(script_file)
@@ -294,12 +302,12 @@ def main():
         type=str,
         default="cmdline",
         choices=["cmdline", "directive"],
-        help="Options style to pass to batch system. 'cmdline' places all arguments on the submission command line, 'directive' places as many arguments as possible in the batch script",
+        help="Options style to pass to batch system. 'cmdline' places all arguments on the submission command line, 'directive' places as many arguments as possible in the batch script. '--opts-style directive' can only be used with --print-script to generate example run scripts for an HPC system",
     )
     # Undocumented and buggy as per https://bugs.python.org/issue43343#msg387812
     # but the only way to get GNU C-like argument parsing without manually looping
     # through args
-    parser.add_argument("rest", nargs=argparse.REMAINDER)
+    parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
     ns = parser.parse_args(sys.argv[1:])
 
     sys.exit(

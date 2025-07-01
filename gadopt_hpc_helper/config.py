@@ -9,9 +9,10 @@ class, which is used when formatting job templates.
 import os
 from datetime import timedelta
 import math
-from typing import Any
+from typing import Any, Callable
 
 from .systems import HPCSystem
+from .schedulers import format_batch_arg_spec
 
 default_walltime = timedelta(hours=4)
 
@@ -184,54 +185,78 @@ class HPCHelperConfig:
         self.outfile = outfile
         self.errfile = errfile
         self.jobname = jobname
+        self.directives = ""
 
-    def set_directives(self, system: HPCSystem, opts_style: str):
-        directives = []
-        if opts_style == "directive":
-            dir_prefix = system.scheduler.directive_prefix
+        self.do_name = self.jobname != ""
+        self.do_stdout = self.outfile != ""
+        self.do_stderr = self.errfile != ""
 
-            if self.jobname:
-                directives.append(f"{dir_prefix} {system.scheduler.name_spec}")
-            if system.scheduler.procs_spec:
-                directives.append(f"{dir_prefix} {system.scheduler.procs_spec}")
-            if system.scheduler.time_spec:
-                directives.append(f"{dir_prefix} {system.scheduler.time_spec}")
-            if system.scheduler.mem_spec:
-                directives.append(f"{dir_prefix} {system.scheduler.mem_spec}")
-            if system.scheduler.local_storage_spec:
-                directives.append(f"{dir_prefix} {system.scheduler.local_storage_spec}")
-            if system.scheduler.acct_spec:
-                directives.append(f"{dir_prefix} {system.scheduler.acct_spec}")
-            if system.scheduler.queue_spec:
-                directives.append(f"{dir_prefix} {system.scheduler.queue_spec}")
-            size_flags = system.scheduler.job_size_specific_flags(
-                self.nprocs, self.ppn, system.queues[self.queue].cores_per_node, system.queues[self.queue].numa_per_node
-            )
-            if size_flags:
-                directives.append(f"{dir_prefix} {size_flags}")
-            if system.scheduler.extras:
-                directives.append(f"{dir_prefix} {system.scheduler.extras}")
-            if self.outfile:
-                directives.append(f"{dir_prefix} {system.scheduler.stdout_spec}")
-            if self.errfile:
-                directives.append(f"{dir_prefix} {system.scheduler.stderr_spec}")
-        self.directives = "\n".join(
-            [
-                d.format_map(
-                    PreserveFormatDict(
-                        jobname=self.jobname,
-                        cores=self.nprocs,
-                        ppn=self.ppn,
-                        nodes=math.ceil(self.nprocs / self.ppn),
-                        walltime=system.scheduler.time_formatter(self.walltime),
-                        mem=self.mem,
-                        local_storage=system.queues[self.queue].local_disk_per_node,
-                        queue=self.queue,
-                        project=os.environ[system.project_var],
-                        outname=self.outfile,
-                        errname=self.errfile,
-                    )
-                )
-                for d in directives
-            ]
+        if self.nprocs < self.ppn:
+            rounded_up_cores = self.nprocs
+        else:
+            rounded_up_cores = math.ceil(self.nprocs / self.ppn) * self.ppn
+
+        self.global_format_dict = PreserveFormatDict(
+            jobname=self.jobname,
+            comma_sep_vars=self.env,
+            cores=self.nprocs,
+            rounded_up_cores=rounded_up_cores,
+            ppn=self.ppn,
+            nodes=math.ceil(self.nprocs / self.ppn),
+            walltime=system.scheduler.time_formatter(self.walltime),
+            mem=self.mem,
+            local_storage=system.queues[self.queue].local_disk_per_node,
+            queue=self.queue,
+            project=os.environ[system.project_var],
+            outname=self.outfile,
+            errname=self.errfile,
         )
+
+    def set_directives(self, system: HPCSystem):
+        """Batch directive setter
+
+        In the case where --opts-style directive has been specified, write
+        the batch directives line-by-line to the self.directives class
+        variable. This is a best effort and not intended to be used to
+        write production-ready scripts. Instead, it is more of a guide as
+        to what a batch script for a particular problem will look like.
+        When actually submitting jobs, the script is kept as simple as
+        possible and all directives are specified on the commandline in
+        order to reduce the likelihood of submitting a bad script.
+
+        Args:
+          system:
+            The HPCSystem object detected at import time
+
+        """
+        directives: list[str] = []
+        attribs_order: list[str | Callable] = [
+            "name",
+            "procs",
+            "time",
+            "mem",
+            "local_storage",
+            "acct",
+            "queue",
+            system.scheduler.job_size_specific_flags,
+            "extras",
+            "stdout",
+            "stderr",
+        ]
+
+        for attrib in attribs_order:
+            if isinstance(attrib, str):
+                if attrib in system.scheduler.spec:
+                    var_test = getattr(self, f"do_{attrib}") if hasattr(self, f"do_{attrib}") else True
+                    for f in format_batch_arg_spec(
+                        var_test,
+                        system.scheduler.spec[attrib],
+                        self.global_format_dict,
+                        system.scheduler.directive_prefix,
+                    ):
+                        directives.append(f)
+            else:
+                for f in attrib():
+                    directives.append(f"{system.scheduler.directive_prefix} {f}")
+
+            self.directives = "\n".join(directives)

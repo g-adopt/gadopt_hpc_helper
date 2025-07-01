@@ -1,11 +1,28 @@
+"""Logging module
+
+Provides a logger object for interacting with GADOPT HPC Helper.
+Intended to be re-exported by __init__.py, so external applications
+can access with gadopt_hpc_helper.logger.
+"""
+
 import logging
 import sys
 import os
 
 
 def _init_logging() -> logging.Logger:
+    """GADOPT HPC Helper logger
+
+    Construct a logging object, set it to write to stderr and set the
+    level based on the default (WARNING) or whatever is in the
+    GADOPT_HPC_HELPER_LOG_LEVEL environment variable if it is a valid
+    numeric or text warning level (CRITICAL, ERROR, WARNING, INFO, DEBUG)
+
+    Returns:
+      logging.Logger: The logger object
+    """
     logger = logging.getLogger("GadoptHPCHelper")
-    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler = logging.StreamHandler(sys.stderr)
     stream_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
     logger.addHandler(stream_handler)
     # Get log level
