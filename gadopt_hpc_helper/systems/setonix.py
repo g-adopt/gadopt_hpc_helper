@@ -15,6 +15,9 @@ _setonix_queues = {
 _setonix_gadopt_setup = """
 module use /software/projects/pawsey0821/modules
 module load firedrake
+
+export MPICH_OFI_STARTUP_CONNECT=1
+export MPICH_OFI_VERBOSE=1
 """
 
 _setonix_job_header = """#!/bin/bash -i
